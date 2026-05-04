@@ -45,7 +45,7 @@ The tag-oriented layer alone is sufficient to read and manipulate GEDCOM files w
 ### Read a GEDCOM file (tag-oriented layer)
 
 ```js
-import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
+import { GEDCStruct, g7ConfGEDC } from './src/gedcstruct.js'
 
 const gedc = GEDCStruct.fromString(gedcomText, g7ConfGEDC, console.error)
 // gedc is an array of level-0 GEDCStruct nodes
@@ -57,9 +57,9 @@ const individuals = [...gedc.querySelectorAll('.INDI')]            // all INDI r
 ### Read and validate a GEDCOM 7 file
 
 ```js
-import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
-import { G7Lookups } from './g7lookups.js'
-import { G7Dataset } from './g7structure.js'
+import { GEDCStruct, g7ConfGEDC } from './src/gedcstruct.js'
+import { G7Lookups } from './src/g7lookups.js'
+import { G7Dataset } from './src/g7structure.js'
 
 // 1. Load the GEDCOM 7 specification
 const spec = await fetch('https://raw.githubusercontent.com/FamilySearch/GEDCOM-registries/main/generated_files/g7validation.json')
@@ -113,25 +113,25 @@ const same = dataset.findOrCreate(
 
 ## Modules
 
-### `gedcstruct.js` — Tag-oriented layer
+### `src/gedcstruct.js` — Tag-oriented layer
 
 Turns GEDCOM text into a tree of `GEDCStruct` nodes. Handles `CONT`/`CONC` pseudo-structures, cross-reference pointers, and 5.x or 7.x dialects.
 
 Exports: `GEDCStruct`, `g5ConfGEDC`, `g7ConfGEDC`
 
-### `g7lookups.js` — GEDCOM 7 specification
+### `src/g7lookups.js` — GEDCOM 7 specification
 
 Wraps the [FamilySearch GEDCOM Registries](https://github.com/FamilySearch/GEDCOM-registries) JSON to provide tag definitions, payload types, enumeration sets, and extension handling.
 
 Exports: `G7Lookups`
 
-### `g7structure.js` — Type-aware layer
+### `src/g7structure.js` — Type-aware layer
 
 Converts tag-oriented nodes into type-validated `G7Structure` objects. Understands GEDCOM 7 semantics, cardinality rules, payload types, and extension handling.
 
 Exports: `G7Structure`, `G7Dataset`
 
-### `g7datatypes.js` — Payload data types
+### `src/g7datatypes.js` — Payload data types
 
 Implements typed payload values: `G7Date`, `G7DateValue`, `G7Age`, `G7Time`, `G7Enum`.
 
