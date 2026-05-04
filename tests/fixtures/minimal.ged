@@ -1,0 +1,18 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SUBM @U1@
+0 @U1@ SUBM
+1 NAME Test Suite
+0 @I1@ INDI
+1 NAME Alice /Smith/
+1 SEX F
+1 BIRT
+2 DATE 15 MAR 1980
+2 PLAC Paris, France
+0 @I2@ INDI
+1 NAME Bob /Jones/
+1 SEX M
+1 BIRT
+2 DATE 20 JUN 1978
+0 TRLR

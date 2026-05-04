@@ -145,6 +145,33 @@ Implements typed payload values: `G7Date`, `G7DateValue`, `G7Age`, `G7Time`, `G7
 
 ---
 
+## Testing
+
+Requires Node.js 20+. The integration tests depend on the FamilySearch GEDCOM 7 specification, which is downloaded once and cached locally.
+
+```bash
+# First-time setup: download the spec fixture
+npm run test:setup
+
+# Run all tests
+npm test
+
+# Run only unit tests (no network required)
+npm run test:unit
+
+# Run only integration tests
+npm run test:integration
+```
+
+| Suite | Location | Requires spec |
+|-------|----------|:-------------:|
+| Unit — `GEDCStruct` | `tests/unit/gedcstruct.test.js` | No |
+| Unit — datatypes | `tests/unit/g7datatypes.test.js` | No |
+| Integration — `G7Dataset` | `tests/integration/g7dataset.test.js` | Yes |
+| Integration — round-trip | `tests/integration/round-trip.test.js` | Yes |
+
+---
+
 ## Character Encoding
 
 This library operates on JavaScript strings. It does not handle byte-level encoding conversion (UTF-8, ANSEL, etc.) — you must decode the file into a JavaScript string before passing it to the library.
