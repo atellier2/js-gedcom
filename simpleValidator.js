@@ -1,6 +1,6 @@
-import { GEDCStruct, g7ConfGEDC } from "./gedcstruct.js"
-import { G7Lookups } from './g7lookups.js'
-import { G7Dataset } from './g7structure.js'
+import { GEDCStruct, g7ConfGEDC } from "./src/gedcstruct.js"
+import { G7Lookups } from './src/g7lookups.js'
+import { G7Dataset } from './src/g7structure.js'
 
 const addError = (msg) => {
   const li = document.createElement('li')

@@ -1,0 +1,17 @@
+{
+  "name": "js-gedcom",
+  "version": "1.0.0",
+  "description": "JavaScript library for parsing and validating GEDCOM 7 genealogy files",
+  "type": "module",
+  "main": "src/g7structure.js",
+  "exports": {
+    "./gedcstruct": "./src/gedcstruct.js",
+    "./g7datatypes": "./src/g7datatypes.js",
+    "./g7lookups": "./src/g7lookups.js",
+    "./g7structure": "./src/g7structure.js"
+  },
+  "license": "MIT OR Unlicense",
+  "files": [
+    "src/"
+  ]
+}
