@@ -1,50 +1,50 @@
-# Architecture de js-gedcom
+# Architecture
 
-## Vue d'ensemble
+## Overview
 
-La bibliothèque est organisée en couches indépendantes. Chaque couche peut être utilisée seule, ou combinée avec les suivantes pour des traitements plus riches.
+The library is organized into independent layers. Each layer can be used alone, or combined with the next for richer processing.
 
 ```
-Texte GEDCOM brut
+Raw GEDCOM text
        │
        ▼
 ┌─────────────────────────────────────────┐
-│  Couche 1 : Orientée tags (gedcstruct)  │
-│  Arbre de nœuds GEDCStruct              │
-│  – tag, payload (string/pointeur), sub  │
+│  Layer 1: Tag-oriented  (gedcstruct)    │
+│  Tree of GEDCStruct nodes               │
+│  – tag, payload (string/pointer), sub   │
 └─────────────────────────────────────────┘
        │
        ▼ G7Dataset.fromGEDC()
 ┌─────────────────────────────────────────┐
-│  Couche 2 : Orientée types (g7structure)│
-│  Arbre de G7Structure validées          │
-│  – type (URI), payload (typé), sub (Map)│
+│  Layer 2: Type-aware  (g7structure)     │
+│  Tree of validated G7Structure nodes    │
+│  – type (URI), payload (typed), sub (Map│
 └─────────────────────────────────────────┘
        ▲
-       │ alimentée par
+       │ powered by
 ┌─────────────────────────────────────────┐
-│  Couche 3 : Spécification (g7lookups)   │
-│  G7Lookups : registre FamilySearch      │
-│  – définitions de tags, types, enums    │
+│  Layer 3: Specification  (g7lookups)    │
+│  G7Lookups: FamilySearch registry       │
+│  – tag definitions, types, enumerations │
 └─────────────────────────────────────────┘
 ```
 
 ---
 
-## Couche 1 : Orientée tags — `gedcstruct.js`
+## Layer 1: Tag-oriented — `gedcstruct.js`
 
-### Rôle
+### Role
 
-Cette couche lit la syntaxe GEDCOM brute sans rien savoir de la signification des tags. Elle produit un arbre de `GEDCStruct` en gérant :
+This layer reads raw GEDCOM syntax without knowing the meaning of any tag. It produces a tree of `GEDCStruct` nodes by handling:
 
-- la numérotation des niveaux (0, 1, 2…)
-- les cross-références (`@I1@`) transformées en pointeurs directs
-- les pseudo-structures `CONT` (continuation de ligne) et `CONC` (concaténation), transparentes après parsing
-- les dialectes GEDCOM (5.x ou 7.x)
+- level numbering (0, 1, 2…)
+- cross-references (`@I1@`) resolved to direct pointers
+- `CONT` (line continuation) and `CONC` (concatenation) pseudo-structures, which are transparent after parsing
+- GEDCOM dialects (5.x or 7.x)
 
-### Structure d'un nœud `GEDCStruct`
+### Structure of a `GEDCStruct` node
 
-Chaque nœud représente une ligne GEDCOM :
+Each node represents one GEDCOM line:
 
 ```
 0 @I1@ INDI
@@ -53,77 +53,77 @@ Chaque nœud représente une ligne GEDCOM :
 2 DATE 1 JAN 1900
 ```
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `tag` | `string` | Le tag GEDCOM (`INDI`, `NAME`, `BIRT`…) |
-| `payload` | `string \| GEDCStruct \| null \| undefined` | La valeur de la ligne, ou un pointeur vers un autre nœud |
-| `sub` | `GEDCStruct[]` | Les sous-structures (enfants) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `tag` | `string` | The GEDCOM tag (`INDI`, `NAME`, `BIRT`…) |
+| `payload` | `string \| GEDCStruct \| null \| undefined` | The line value, or a pointer to another node |
+| `sub` | `GEDCStruct[]` | Child sub-structures |
 
-La liste retournée par `fromString` représente les nœuds de niveau 0 (enregistrements racine). Chaque nœud contient ses enfants dans `sub`.
+`fromString` returns the level-0 nodes (root records). Each node holds its children in `sub`.
 
-### Dialectes
+### Dialects
 
-Deux configurations prédéfinies correspondent aux spécifications officielles :
+Two pre-built configuration objects match the official specifications:
 
-- **`g5ConfGEDC`** : GEDCOM 5.x — longueur de ligne limitée à 255 caractères, format de tag plus permissif.
-- **`g7ConfGEDC`** : FamilySearch GEDCOM 7 — longueur illimitée, tags strictement alphanumériques, pas de `CONC`.
+- **`g7ConfGEDC`**: FamilySearch GEDCOM 7 — no line length limit, strictly alphanumeric tags, no `CONC`.
+- **`g5ConfGEDC`**: GEDCOM 5.x — 255-character line limit, more permissive tag format.
 
-La configuration contrôle : longueur de ligne, format de tag et d'identifiant, séparateurs, payloads autorisés.
+The configuration controls: line length, tag and cross-reference format, allowed delimiters, and allowed payloads.
 
-### Flux de données (couche 1 seule)
+### Data flow (layer 1 only)
 
 ```
-Texte GEDCOM
+GEDCOM text
     │ GEDCStruct.fromString(text, config, logger)
     ▼
-GEDCStruct[] (tableau des nœuds de niveau 0)
+GEDCStruct[]  (array of level-0 nodes)
     │
-    ├── querySelector('HEAD.GEDC.VERS')      → premier match
-    ├── querySelectorAll('.INDI')            → tous les individus
+    ├── querySelector('HEAD.GEDC.VERS')   → first match
+    ├── querySelectorAll('.INDI')         → all individuals
     │
     │ toString(newline, maxlen, escapes)
     ▼
-Texte GEDCOM (round-trip)
+GEDCOM text  (round-trip)
 ```
 
 ---
 
-## Couche 2 : Orientée types — `g7structure.js`
+## Layer 2: Type-aware — `g7structure.js`
 
-### Rôle
+### Role
 
-Cette couche applique la sémantique GEDCOM 7 à l'arbre produit par la couche 1. Pour chaque nœud `GEDCStruct`, elle :
+This layer applies GEDCOM 7 semantics to the tree produced by layer 1. For each `GEDCStruct` node it:
 
-1. détermine le **type** (URI FamilySearch) en fonction du contexte (tag + position dans l'arbre)
-2. parse le **payload** dans le type correct (date, âge, énumération, pointeur…)
-3. vérifie les **règles de cardinalité** (champs requis, champs uniques, etc.)
-4. gère les **extensions** (tags commençant par `_`, tags non enregistrés, tags relocalisés)
+1. determines the **type** (FamilySearch URI) based on context (tag + position in tree)
+2. parses the **payload** into the correct type (date, age, enumeration, pointer…)
+3. enforces **cardinality rules** (required fields, singular fields, etc.)
+4. handles **extensions** (tags starting with `_`, unregistered tags, relocated tags)
 
-### Les deux classes principales
+### The two main classes
 
-#### `G7Structure` — Un nœud typé
+#### `G7Structure` — A typed node
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `type` | `string` | URI GEDCOM 7 ou tag d'extension non documenté |
-| `payload` | variable | Valeur typée (string, G7Date, G7Enum, G7Structure, null…) |
-| `sub` | `Map<type, G7Structure[]>` | Sous-structures indexées par type |
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `string` | GEDCOM 7 URI or undocumented extension tag |
+| `payload` | variable | Typed value (string, G7Date, G7Enum, G7Structure, null…) |
+| `sub` | `Map<type, G7Structure[]>` | Sub-structures indexed by type URI |
 
-La clé de `sub` est le type URI, pas le tag. Plusieurs sous-structures du même type sont regroupées dans un tableau.
+The `sub` map key is the type URI, not the tag. Multiple sub-structures of the same type are grouped in an array.
 
-#### `G7Dataset` — Le dataset complet
+#### `G7Dataset` — The complete dataset
 
-Conteneur de niveau supérieur. Contient :
+Top-level container holding:
 
-| Propriété | Description |
-|-----------|-------------|
-| `header` | Le `G7Structure` de type `HEAD` |
-| `records` | `Map<type_uri, G7Structure[]>` — tous les enregistrements racine |
+| Property | Description |
+|----------|-------------|
+| `header` | The `G7Structure` of type `HEAD` |
+| `records` | `Map<type_uri, G7Structure[]>` — all root records |
 
-### Flux de données (couche 2)
+### Data flow (layer 2)
 
 ```
-GEDCStruct[] (couche 1)
+GEDCStruct[]  (layer 1)
     │ G7Dataset.fromGEDC(gedc, lookup)
     ▼
 G7Dataset
@@ -133,75 +133,75 @@ G7Dataset
          ├── 'https://gedcom.io/terms/v7/record-FAM'  → [G7Structure, ...]
          └── ...
 
-    │ dataset.validate()      → compte les erreurs
-    │ dataset.populateSchema() → ajoute HEAD.SCHMA pour les extensions
-    │ dataset.toString()       → texte GEDCOM
-    │ dataset.toJSON()         → objet JSON
+    │ dataset.validate()       → error count
+    │ dataset.populateSchema() → add HEAD.SCHMA for extensions
+    │ dataset.toString()       → GEDCOM text
+    │ dataset.toJSON()         → JSON object
     ▼
-Sortie
+Output
 ```
 
-### Création programmatique
+### Programmatic creation
 
-La couche 2 peut être utilisée sans parsing. On construit un dataset de zéro :
+Layer 2 can be used without parsing. A dataset is built from scratch:
 
 ```
 new G7Dataset(lookup)
     │ createRecord(typeURI)
     ▼
-G7Structure (record)
+G7Structure  (record)
     │ createSubstructure(typeURI, payload)
     ▼
-G7Structure (sous-structure)
+G7Structure  (sub-structure)
     ...
 ```
 
-Le pattern `findOrCreate` permet de travailler de manière déclarative : on décrit la structure souhaitée et la bibliothèque la crée si elle n'existe pas, ou retourne l'existante si elle est déjà là.
+The `findOrCreate` pattern enables declarative writes: the call describes the desired structure and the library either returns the existing one or creates it.
 
 ---
 
-## Couche 3 : Spécification — `g7lookups.js`
+## Layer 3: Specification — `g7lookups.js`
 
-### Rôle
+### Role
 
-`G7Lookups` encapsule le fichier `g7validation.json` publié par FamilySearch. Ce fichier décrit l'ensemble des tags standard, leurs types de payload, leurs règles de cardinalité, et les ensembles d'énumérations valides.
+`G7Lookups` wraps the `g7validation.json` file published by FamilySearch. This file describes all standard tags, their payload types, cardinality rules, and valid enumeration sets.
 
-La couche 2 consulte `G7Lookups` pour chaque nœud pendant la conversion depuis la couche 1. Les callbacks `err` et `warn` permettent de capturer les erreurs et avertissements sans interrompre le traitement.
+Layer 2 consults `G7Lookups` for every node during conversion from layer 1. The `err` and `warn` callbacks capture errors and warnings without interrupting processing.
 
-### Gestion des extensions
+### Extension handling
 
-Les extensions GEDCOM sont des tags ou structures définis en dehors de la spécification officielle. `G7Lookups` les gère en plusieurs catégories :
+GEDCOM extensions are tags or structures defined outside the official specification. `G7Lookups` classifies them into four categories:
 
-| Catégorie | Description |
-|-----------|-------------|
-| **Non documentée** | Tag `_` sans définition dans `HEAD.SCHMA` |
-| **Non enregistrée** | URI présente dans `SCHMA` mais absente du registre FamilySearch |
-| **Alias** | Tag qui correspond à un type standard dans un autre contexte |
-| **Relocalisée** | Structure standard utilisée sous une superstructure non prévue |
-
----
-
-## Types de payloads — `g7datatypes.js`
-
-GEDCOM 7 définit plusieurs types de valeurs structurées. La bibliothèque les représente comme des objets distincts :
-
-| Classe | Exemple GEDCOM | Description |
-|--------|----------------|-------------|
-| `G7Age` | `> 35y 6m` | Âge avec opérateur, années, mois, semaines, jours |
-| `G7Date` | `1 JAN 1900` | Date précise avec calendrier, mois, jour, année, époque |
-| `G7DateValue` | `ABT 1900`, `BET 1900 AND 1910` | Valeur de date (approximation, plage, période…) |
-| `G7Time` | `12:30:45Z` | Heure avec fuseau horaire |
-| `G7Enum` | `HUSB` | Valeur d'énumération (URI ou tag selon contexte) |
-
-Les payloads de type `string` (texte libre, nom, langue…) restent des chaînes JavaScript.
+| Category | Description |
+|----------|-------------|
+| **Undocumented** | `_`-prefixed tag with no definition in `HEAD.SCHMA` |
+| **Unregistered** | URI present in `SCHMA` but absent from the FamilySearch registry |
+| **Aliased** | Tag that matches a standard type in a different context |
+| **Relocated** | Standard structure used under an unexpected superstructure |
 
 ---
 
-## Séparation des responsabilités
+## Payload types — `g7datatypes.js`
 
-Cette architecture permet plusieurs usages indépendants :
+GEDCOM 7 defines several structured value types. The library represents them as distinct objects:
 
-- **Parsing simple** : utiliser uniquement `gedcstruct.js` pour lire n'importe quel fichier GEDCOM sans valider les types.
-- **Validation** : passer par les trois couches pour détecter toutes les violations de la spécification GEDCOM 7.
-- **Transformation** : lire en couche 1, modifier, réécrire en GEDCOM sans passer par la couche 2.
-- **Création typée** : construire un dataset GEDCOM 7 valide depuis zéro avec la couche 2.
+| Class | GEDCOM example | Description |
+|-------|----------------|-------------|
+| `G7Age` | `> 35y 6m` | Age with operator, years, months, weeks, days |
+| `G7Date` | `1 JAN 1900` | Precise date with calendar, month, day, year, epoch |
+| `G7DateValue` | `ABT 1900`, `BET 1900 AND 1910` | Flexible date (approximation, range, period…) |
+| `G7Time` | `12:30:45Z` | Time with timezone |
+| `G7Enum` | `HUSB` | Enumeration value (URI or tag depending on context) |
+
+`string` payloads (free text, name, language…) remain plain JavaScript strings.
+
+---
+
+## Separation of concerns
+
+This architecture supports several independent use cases:
+
+- **Simple parsing**: use only `gedcstruct.js` to read any GEDCOM file without type validation.
+- **Validation**: go through all three layers to detect every violation of the GEDCOM 7 specification.
+- **Transformation**: read at layer 1, modify, write back to GEDCOM without involving layer 2.
+- **Typed creation**: build a valid GEDCOM 7 dataset from scratch using layer 2.

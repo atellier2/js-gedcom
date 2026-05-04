@@ -1,104 +1,104 @@
-# Référence API
+# API Reference
 
 ## Module `gedcstruct.js`
 
-### Classe `GEDCStruct`
+### Class `GEDCStruct`
 
-Représente un nœud de l'arbre GEDCOM syntaxique (couche orientée tags).
+Represents a node in the GEDCOM syntactic tree (tag-oriented layer).
 
-#### Propriétés
+#### Properties
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `tag` | `string` | Le tag GEDCOM de ce nœud |
-| `payload` | `string \| GEDCStruct \| null \| undefined` | La valeur du nœud : texte, pointeur vers un autre nœud, `null` si la destination du pointeur est inconnue, ou `undefined` si absent |
-| `sub` | `GEDCStruct[]` | Les sous-structures enfants |
-| `superstruct` | `GEDCStruct \| null` | La structure parente (lecture seule) |
-| `references` | `GEDCStruct[]` | Structures qui pointent vers ce nœud (lecture seule) |
-| `xref_id` | `string \| undefined` | Identifiant recommandé pour sérialiser les pointeurs vers ce nœud (lecture seule) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `tag` | `string` | The GEDCOM tag of this node |
+| `payload` | `string \| GEDCStruct \| null \| undefined` | Node value: text, pointer to another node, `null` if the pointer destination is unknown, or `undefined` if absent |
+| `sub` | `GEDCStruct[]` | Child sub-structures |
+| `superstruct` | `GEDCStruct \| null` | Parent structure (read-only) |
+| `references` | `GEDCStruct[]` | Structures pointing to this node (read-only) |
+| `xref_id` | `string \| undefined` | Recommended identifier for serializing pointers to this node (read-only) |
 
-#### Méthodes statiques
+#### Static methods
 
 ---
 
 **`GEDCStruct.fromString(input, config?, logger?)`**
 
-Parse un texte GEDCOM en tableau de `GEDCStruct` (nœuds de niveau 0).
+Parses a GEDCOM text into an array of `GEDCStruct` (level-0 nodes).
 
-| Paramètre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `input` | `string` | Le texte GEDCOM complet |
-| `config` | `object` | Configuration du dialecte. Utiliser `g7ConfGEDC` ou `g5ConfGEDC`. Défaut : dialecte générique permissif |
-| `logger` | `function(msg)` | Appelée pour chaque erreur de syntaxe |
+| `input` | `string` | The complete GEDCOM text |
+| `config` | `object` | Dialect configuration. Use `g7ConfGEDC` or `g5ConfGEDC`. Default: permissive generic dialect |
+| `logger` | `function(msg)` | Called for each syntax error |
 
-Retourne : `GEDCStruct[]`
+Returns: `GEDCStruct[]`
 
 ---
 
 **`GEDCStruct.fromJSON(obj)`**
 
-Reconstruit un tableau de `GEDCStruct` depuis un objet JSON produit par `toJSON()`.
+Reconstructs a `GEDCStruct` array from a JSON object produced by `toJSON()`.
 
-Retourne : `GEDCStruct[]`
+Returns: `GEDCStruct[]`
 
 ---
 
-#### Méthodes d'instance
+#### Instance methods
 
 **`toString(newline?, maxlen?, escapes?)`**
 
-Sérialise ce nœud et ses descendants en texte GEDCOM.
+Serializes this node and its descendants to GEDCOM text.
 
-| Paramètre | Type | Défaut | Description |
-|-----------|------|--------|-------------|
-| `newline` | `string` | `'\n'` | Séparateur de lignes |
-| `maxlen` | `number` | `0` | Longueur max par ligne (0 = illimité, négatif = illimité sans CONC) |
-| `escapes` | `boolean` | `false` | Si `true`, ne pas échapper `@#` en `@@#` |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `newline` | `string` | `'\n'` | Line separator |
+| `maxlen` | `number` | `0` | Max characters per line (0 = unlimited, negative = unlimited without CONC) |
+| `escapes` | `boolean` | `false` | If `true`, do not escape `@#` as `@@#` |
 
-Retourne : `string`
+Returns: `string`
 
 ---
 
 **`toJSON()`**
 
-Sérialise ce nœud en objet JSON reconstructible.
+Serializes this node to a JSON object that can be restored with `fromJSON`.
 
-Retourne : `object`
+Returns: `object`
 
 ---
 
 **`querySelector(path)`**
 
-Retourne le **premier** nœud correspondant au chemin de tags donné.
+Returns the **first** node matching the given tag path.
 
 **`querySelectorAll(path)`**
 
-Retourne un itérateur de **tous** les nœuds correspondant au chemin de tags donné.
+Returns an iterator over **all** nodes matching the given tag path.
 
-Syntaxe des chemins :
+Path syntax:
 
-| Chemin | Signification |
-|--------|---------------|
-| `XYZ` | N'importe quel nœud avec le tag `XYZ` |
-| `.XYZ` | Un nœud racine (niveau 0) avec le tag `XYZ` |
-| `ABC.XYZ` | Un `XYZ` enfant direct d'un `ABC` |
-| `ABC..XYZ` | Un `XYZ` descendant quelconque d'un `ABC` |
+| Path | Meaning |
+|------|---------|
+| `XYZ` | Any node with tag `XYZ` |
+| `.XYZ` | A root (level-0) node with tag `XYZ` |
+| `ABC.XYZ` | An `XYZ` that is a direct child of an `ABC` |
+| `ABC..XYZ` | An `XYZ` that is any descendant of an `ABC` |
 
-Exemple :
+Example:
 ```js
-gedc.querySelector('HEAD.GEDC.VERS')  // Version GEDCOM
-gedc.querySelectorAll('.INDI')        // Tous les individus
+gedc.querySelector('HEAD.GEDC.VERS')  // GEDCOM version
+gedc.querySelectorAll('.INDI')        // all individuals
 ```
 
 ---
 
-### Objets de configuration
+### Configuration objects
 
 #### `g7ConfGEDC` — FamilySearch GEDCOM 7
 
 ```js
 {
-  len: -1,        // pas de limite de longueur, CONC interdit
+  len: -1,        // no line length limit, CONC not allowed
   tag: /^([A-Z]|_[0-9_A-Z])[0-9_A-Z]*$/u,
   xref: /^([A-Z]|_[0-9_A-Z])[0-9_A-Z]*$/u,
   linesep: /^(\r\n?|\n\r?)$/,
@@ -113,7 +113,7 @@ gedc.querySelectorAll('.INDI')        // Tous les individus
 
 ```js
 {
-  len: 255,       // 255 caractères max par ligne
+  len: 255,       // max 255 characters per line
   tag: /^[0-9a-z_A-Z]{1,31}$/u,
   xref: /^[0-9a-z_A-Z][^\p{Cc}@]{0,19}$/u,
   linesep: /^[\r\n][\r\n \t]*$/,
@@ -123,314 +123,314 @@ gedc.querySelectorAll('.INDI')        // Tous les individus
 }
 ```
 
-#### Clés de configuration
+#### Configuration keys
 
-| Clé | Rôle |
+| Key | Role |
 |-----|------|
-| `len` | Longueur max de ligne (0 = illimité, négatif = illimité sans CONC) |
-| `tag` | Regex de validation des tags |
-| `xref` | Regex de validation des identifiants cross-référence |
-| `linesep` | Regex des séparateurs de lignes autorisés |
-| `delim` | Regex des délimiteurs autorisés |
-| `payload` | Regex des payloads texte autorisés |
-| `zeros` | `true` pour autoriser les niveaux avec zéros initiaux (`00`, `01`…) |
-| `escapes` | `true` pour ne pas échapper `@#` en `@@#` lors de la sérialisation |
+| `len` | Max line length (0 = unlimited, negative = unlimited without CONC) |
+| `tag` | Regex for valid tags |
+| `xref` | Regex for valid cross-reference identifiers |
+| `linesep` | Regex for allowed line separators |
+| `delim` | Regex for allowed delimiters |
+| `payload` | Regex for allowed string payloads |
+| `zeros` | `true` to allow leading zeros on levels (`00`, `01`…) |
+| `escapes` | `true` to suppress escaping `@#` as `@@#` during serialization |
 
 ---
 
 ## Module `g7lookups.js`
 
-### Classe `G7Lookups`
+### Class `G7Lookups`
 
-Encapsule la spécification FamilySearch GEDCOM 7 et sert de registre dynamique pour la résolution des types de tags et la gestion des extensions.
+Wraps the FamilySearch GEDCOM 7 specification and acts as a dynamic registry for tag type resolution and extension handling.
 
-#### Propriétés
+#### Properties
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `err` | `function(msg)` | Callback pour les violations de la spécification |
-| `warn` | `function(msg)` | Callback pour les comportements déconseillés |
+| Property | Type | Description |
+|----------|------|-------------|
+| `err` | `function(msg)` | Callback for specification violations |
+| `warn` | `function(msg)` | Callback for discouraged patterns |
 
-Les doublons sont automatiquement filtrés : chaque message unique n'est reporté qu'une seule fois.
+Duplicate messages are automatically suppressed: each unique message is reported only once.
 
-#### Constructeur
+#### Constructor
 
 **`new G7Lookups(g7validation)`**
 
-| Paramètre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `g7validation` | `object` | Le contenu du fichier `g7validation.json` de FamilySearch |
+| `g7validation` | `object` | Content of FamilySearch's `g7validation.json` |
 
-Le fichier peut être obtenu depuis :
+The file can be fetched from:
 `https://raw.githubusercontent.com/FamilySearch/GEDCOM-registries/main/generated_files/g7validation.json`
 
 ---
 
 ## Module `g7structure.js`
 
-### Classe `G7Dataset`
+### Class `G7Dataset`
 
-Conteneur de niveau supérieur pour un dataset GEDCOM 7 complet.
+Top-level container for a complete GEDCOM 7 dataset.
 
-#### Propriétés
+#### Properties
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `header` | `G7Structure` | La structure `HEAD` du dataset |
-| `records` | `Map<string, G7Structure[]>` | Enregistrements racine, indexés par type URI |
+| Property | Type | Description |
+|----------|------|-------------|
+| `header` | `G7Structure` | The `HEAD` structure of the dataset |
+| `records` | `Map<string, G7Structure[]>` | Root records indexed by type URI |
 
-#### Méthodes statiques
+#### Static methods
 
 ---
 
 **`G7Dataset.fromString(text, lookup)`**
 
-Parse un texte GEDCOM directement en `G7Dataset` (combine `fromString` de `GEDCStruct` et `fromGEDC`).
+Parses a GEDCOM text directly into a `G7Dataset` (combines `GEDCStruct.fromString` and `fromGEDC`).
 
-| Paramètre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `text` | `string` | Le texte GEDCOM complet |
-| `lookup` | `G7Lookups` | La spécification GEDCOM 7 |
+| `text` | `string` | The complete GEDCOM text |
+| `lookup` | `G7Lookups` | The GEDCOM 7 specification |
 
-Retourne : `G7Dataset`
+Returns: `G7Dataset`
 
 ---
 
 **`G7Dataset.fromGEDC(gedc, lookup)`**
 
-Convertit un tableau de `GEDCStruct` en `G7Dataset` typé et validé.
+Converts a `GEDCStruct` array into a typed, validated `G7Dataset`.
 
-| Paramètre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `gedc` | `GEDCStruct[]` | Résultat de `GEDCStruct.fromString()` |
-| `lookup` | `G7Lookups` | La spécification GEDCOM 7 |
+| `gedc` | `GEDCStruct[]` | Result of `GEDCStruct.fromString()` |
+| `lookup` | `G7Lookups` | The GEDCOM 7 specification |
 
-Retourne : `G7Dataset`
+Returns: `G7Dataset`
 
 ---
 
 **`G7Dataset.fromJSON(obj, lookup)`**
 
-Reconstruit un `G7Dataset` depuis un objet JSON produit par `toJSON()`.
+Reconstructs a `G7Dataset` from a JSON object produced by `toJSON()`.
 
-Retourne : `G7Dataset`
+Returns: `G7Dataset`
 
 ---
 
-#### Méthodes d'instance
+#### Instance methods
 
 **`createRecord(type, payload?, pltype?, id?)`**
 
-Crée un enregistrement racine et l'ajoute au dataset.
+Creates a root record and adds it to the dataset.
 
-| Paramètre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | `string` | L'URI du type GEDCOM 7 (ex. `'https://gedcom.io/terms/v7/record-INDI'`) |
-| `payload` | variable | La valeur initiale du payload |
-| `pltype` | `string` | Type de payload explicite si non déductible |
-| `id` | `string` | Identifiant xref suggéré pour la sérialisation |
+| `type` | `string` | GEDCOM 7 type URI (e.g. `'https://gedcom.io/terms/v7/record-INDI'`) |
+| `payload` | variable | Initial payload value |
+| `pltype` | `string` | Explicit payload type if not inferrable |
+| `id` | `string` | Suggested xref identifier for serialization |
 
-Retourne : `G7Structure`
+Returns: `G7Structure`
 
 ---
 
 **`find(type, payload, ...args)`**
 
-Recherche un enregistrement du type donné. Accepte des critères supplémentaires sous forme de paires `(typeURI, valeur)` à vérifier dans les sous-structures.
+Searches for a record of the given type. Accepts additional criteria as `(typeURI, value)` pairs to match against sub-structures.
 
 ```js
-// Trouver l'individu ayant le REFN "ID-42"
+// Find the individual with REFN "ID-42"
 const person = dataset.find(
   'https://gedcom.io/terms/v7/record-INDI', -1,
   'https://gedcom.io/terms/v7/REFN', 'ID-42'
 )
-// Retourne null si non trouvé
+// Returns null if not found
 ```
 
-La valeur `-1` comme payload signifie "n'importe quelle valeur".
+The value `-1` as payload means "any value".
 
-Retourne : `G7Structure | null`
+Returns: `G7Structure | null`
 
 ---
 
 **`findOrCreate(type, payload, ...args)`**
 
-Comme `find`, mais crée l'enregistrement s'il n'existe pas. Plusieurs appels avec les mêmes arguments retournent toujours le même objet.
+Like `find`, but creates the record if it does not exist. Multiple calls with the same arguments always return the same object.
 
-Retourne : `G7Structure`
+Returns: `G7Structure`
 
 ---
 
 **`validate()`**
 
-Parcourt récursivement tout le dataset et vérifie les règles GEDCOM 7 (cardinalité, types de payload, champs requis). Les erreurs et avertissements sont reportés via les callbacks de `G7Lookups`.
+Recursively traverses the entire dataset and checks GEDCOM 7 rules (cardinality, payload types, required fields). Errors and warnings are reported via the `G7Lookups` callbacks.
 
-Retourne : `number` — le nombre d'erreurs trouvées.
+Returns: `number` — the number of errors found.
 
 ---
 
 **`populateSchema()`**
 
-Examine les extensions utilisées dans le dataset et ajoute automatiquement les entrées `HEAD.SCHMA.TAG` nécessaires. À appeler avant `toString()` si des extensions sont présentes.
+Inspects the extensions used in the dataset and automatically adds the required `HEAD.SCHMA.TAG` entries. Call this before `toString()` if any extensions are present.
 
 ---
 
 **`toString()`**
 
-Sérialise le dataset en texte GEDCOM 7.
+Serializes the dataset to GEDCOM 7 text.
 
-Retourne : `string`
+Returns: `string`
 
 ---
 
 **`toJSON()`**
 
-Sérialise le dataset en objet JSON reconstructible via `fromJSON`.
+Serializes the dataset to a JSON object that can be restored with `fromJSON`.
 
-Retourne : `object`
+Returns: `object`
 
 ---
 
 **`toGEDC()`**
 
-Convertit le dataset en tableau de `GEDCStruct` (couche 1), permettant une sérialisation fine via `GEDCStruct.toString()`.
+Converts the dataset to a `GEDCStruct` array (layer 1), enabling fine-grained serialization via `GEDCStruct.toString()`.
 
-Retourne : `GEDCStruct[]`
+Returns: `GEDCStruct[]`
 
 ---
 
-### Classe `G7Structure`
+### Class `G7Structure`
 
-Représente un nœud typé dans l'arbre GEDCOM 7.
+Represents a typed node in the GEDCOM 7 tree.
 
-#### Propriétés
+#### Properties
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `type` | `string` | URI GEDCOM 7 ou tag d'extension non documenté |
-| `payload` | variable | Valeur typée selon le type de structure |
-| `sub` | `Map<string, G7Structure[]>` | Sous-structures indexées par type URI |
-| `superstruct` | `G7Structure \| null` | Structure parente (lecture seule) |
-| `references` | objet | Structures qui pointent vers celle-ci (lecture seule) |
-| `xref_id` | `string \| undefined` | Identifiant xref suggéré (lecture seule) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `string` | GEDCOM 7 URI or undocumented extension tag |
+| `payload` | variable | Typed value depending on the structure type |
+| `sub` | `Map<string, G7Structure[]>` | Sub-structures indexed by type URI |
+| `superstruct` | `G7Structure \| null` | Parent structure (read-only) |
+| `references` | object | Structures pointing to this one (read-only) |
+| `xref_id` | `string \| undefined` | Suggested xref identifier (read-only) |
 
-#### Méthodes d'instance
+#### Instance methods
 
 **`createSubstructure(type, payload?, pltype?)`**
 
-Crée une sous-structure et l'attache à ce nœud.
+Creates a sub-structure and attaches it to this node.
 
-| Paramètre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | `string` | URI du type GEDCOM 7 |
-| `payload` | variable | Valeur initiale du payload |
-| `pltype` | `string` | Type de payload explicite si non déductible |
+| `type` | `string` | GEDCOM 7 type URI |
+| `payload` | variable | Initial payload value |
+| `pltype` | `string` | Explicit payload type if not inferrable |
 
-Retourne : `G7Structure` (la nouvelle sous-structure)
+Returns: `G7Structure` (the new sub-structure)
 
 ---
 
 **`find(type, payload, ...args)`**
 
-Comme `G7Dataset.find`, mais cherche dans les sous-structures de ce nœud.
+Like `G7Dataset.find`, but searches within this node's sub-structures.
 
-Retourne : `G7Structure | null`
+Returns: `G7Structure | null`
 
 ---
 
 **`findOrCreate(type, payload, ...args)`**
 
-Comme `G7Dataset.findOrCreate`, mais opère sur les sous-structures de ce nœud.
+Like `G7Dataset.findOrCreate`, but operates on this node's sub-structures.
 
-Retourne : `G7Structure`
+Returns: `G7Structure`
 
 ---
 
 **`validate()`**
 
-Lance la validation récursive depuis ce nœud.
+Runs recursive validation from this node downward.
 
-Retourne : `number` — nombre d'erreurs.
+Returns: `number` — error count.
 
 ---
 
 **`toString()`**, **`toJSON()`**, **`toGEDC()`**
 
-Équivalents aux méthodes de `G7Dataset`, mais limités à ce nœud et ses descendants.
+Same as the `G7Dataset` methods, but scoped to this node and its descendants.
 
 ---
 
 ## Module `g7datatypes.js`
 
-Ces classes représentent les types de payloads structurés de GEDCOM 7. Elles sont retournées automatiquement par la couche orientée types ; vous ne les construisez généralement pas manuellement.
+These classes represent the structured payload types of GEDCOM 7. They are returned automatically by the type-aware layer; you generally do not construct them manually.
 
 ### `G7Age`
 
-Représente un âge GEDCOM 7 (ex. `> 35y 6m`).
+Represents a GEDCOM 7 age value (e.g. `> 35y 6m`).
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `operator` | `string \| undefined` | `'<'` ou `'>'` |
-| `years` | `number \| undefined` | Nombre d'années |
-| `months` | `number \| undefined` | Nombre de mois |
-| `weeks` | `number \| undefined` | Nombre de semaines |
-| `days` | `number \| undefined` | Nombre de jours |
+| Property | Type | Description |
+|----------|------|-------------|
+| `operator` | `string \| undefined` | `'<'` or `'>'` |
+| `years` | `number \| undefined` | Number of years |
+| `months` | `number \| undefined` | Number of months |
+| `weeks` | `number \| undefined` | Number of weeks |
+| `days` | `number \| undefined` | Number of days |
 
 ### `G7Date`
 
-Représente une date calendaire précise (ex. `1 JAN 1900`).
+Represents a precise calendar date (e.g. `1 JAN 1900`).
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `calendar` | `string` | URI du calendrier (grégorien par défaut) |
-| `month` | `string \| undefined` | Code du mois (`JAN`, `FEB`…) |
-| `day` | `number \| undefined` | Jour du mois |
-| `year` | `number` | Année |
-| `epoch` | `string \| undefined` | Époque (`BCE`…) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `calendar` | `string` | Calendar URI (Gregorian by default) |
+| `month` | `string \| undefined` | Month code (`JAN`, `FEB`…) |
+| `day` | `number \| undefined` | Day of month |
+| `year` | `number` | Year |
+| `epoch` | `string \| undefined` | Epoch (`BCE`…) |
 
 ### `G7DateValue`
 
-Représente une valeur de date flexible : date précise, approximation, plage, ou période.
+Represents a flexible date: precise date, approximation, range, or period.
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `type` | `string` | `'date'`, `'dateRange'`, `'datePeriod'`, ou qualificatif (`'ABT'`, `'CAL'`, `'EST'`) |
-| `date` | `G7Date \| undefined` | La date principale |
-| `date2` | `G7Date \| undefined` | La seconde date (pour les plages `BET … AND …`) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `string` | `'date'`, `'dateRange'`, `'datePeriod'`, or qualifier (`'ABT'`, `'CAL'`, `'EST'`) |
+| `date` | `G7Date \| undefined` | Primary date |
+| `date2` | `G7Date \| undefined` | Second date (for `BET … AND …` ranges) |
 
 ### `G7Time`
 
-Représente une heure (ex. `12:30:45.5Z`).
+Represents a time value (e.g. `12:30:45.5Z`).
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `hours` | `number` | Heures (0–23) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `hours` | `number` | Hours (0–23) |
 | `minutes` | `number` | Minutes |
-| `seconds` | `number \| undefined` | Secondes |
-| `timezone` | `string \| undefined` | Fuseau horaire (`'Z'` ou offset `+HH:MM`) |
+| `seconds` | `number \| undefined` | Seconds |
+| `timezone` | `string \| undefined` | Timezone (`'Z'` or offset `+HH:MM`) |
 
 ### `G7Enum`
 
-Représente une valeur d'énumération GEDCOM 7.
+Represents a GEDCOM 7 enumeration value.
 
-| Propriété | Type | Description |
-|-----------|------|-------------|
-| `value` | `string` | Le tag ou l'URI de la valeur |
+| Property | Type | Description |
+|----------|------|-------------|
+| `value` | `string` | The tag or URI of the enumeration value |
 
 ---
 
-## Types de payloads par structure
+## Payload types by structure
 
-La nature du payload d'un `G7Structure` dépend de son type URI :
+The nature of a `G7Structure`'s payload depends on its type URI:
 
-| Type de payload | Classe JavaScript |
-|-----------------|-------------------|
-| Texte libre | `string` |
-| Pointeur | `G7Structure` (ou `null` si destination inconnue) |
+| Payload type | JavaScript class |
+|--------------|-----------------|
+| Free text | `string` |
+| Pointer | `G7Structure` (or `null` if destination unknown) |
 | Absent | `undefined` |
-| Entier | `number` |
-| Âge | `G7Age` |
+| Integer | `number` |
+| Age | `G7Age` |
 | Date | `G7DateValue` |
-| Heure | `G7Time` |
-| Énumération | `G7Enum` |
-| Liste | `Array` |
+| Time | `G7Time` |
+| Enumeration | `G7Enum` |
+| List | `Array` |

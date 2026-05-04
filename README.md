@@ -1,14 +1,14 @@
 # js-gedcom
 
-Bibliothèque JavaScript sans dépendances pour lire, valider et créer des fichiers [GEDCOM](https://gedcom.io/) (arbres généalogiques). Supporte GEDCOM 5.x et [FamilySearch GEDCOM 7](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).
+A dependency-free JavaScript library for parsing, validating, and creating [GEDCOM](https://gedcom.io/) genealogy files. Supports both GEDCOM 5.x and [FamilySearch GEDCOM 7](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).
 
-> **Validateur en ligne** : Pour valider un fichier GEDCOM 7 directement dans le navigateur, visitez <https://gedcom7code.github.io/js-gedcom/>.
+> **Online validator**: To validate a GEDCOM 7 file directly in your browser, visit <https://gedcom7code.github.io/js-gedcom/>.
 
 ---
 
-## Qu'est-ce que GEDCOM ?
+## What is GEDCOM?
 
-GEDCOM (Genealogical Data Communication) est le format standard d'échange de données généalogiques. Un fichier GEDCOM est un arbre de structures en texte brut. Chaque ligne contient un **niveau**, un **tag**, et une **valeur** (payload) optionnelle :
+GEDCOM (Genealogical Data Communication) is the standard format for exchanging family tree data between genealogy applications. A GEDCOM file is a plain-text tree of structures. Each line contains a **level**, a **tag**, and an optional **payload**:
 
 ```
 0 HEAD
@@ -20,88 +20,88 @@ GEDCOM (Genealogical Data Communication) est le format standard d'échange de do
 2 DATE 1 JAN 1900
 ```
 
-Les structures s'imbriquent par niveau : une ligne de niveau `2` est enfant de la dernière ligne de niveau `1`.
+Structures nest by level: a level-`2` line is a child of the last level-`1` line.
 
 ---
 
 ## Architecture
 
-La bibliothèque est organisée en **trois couches**, chacune construite sur la précédente :
+The library is organized into **three layers**, each building on the previous:
 
-| Couche | Module | Rôle |
-|--------|--------|------|
-| Orientée tags | `gedcstruct.js` | Lire/écrire la syntaxe GEDCOM brute |
-| Orientée types | `g7structure.js` | Valider la sémantique GEDCOM 7 |
-| Spécification | `g7lookups.js` | Registre FamilySearch GEDCOM 7 |
+| Layer | Module | Role |
+|-------|--------|------|
+| Tag-oriented | `gedcstruct.js` | Parse/serialize raw GEDCOM syntax |
+| Type-aware | `g7structure.js` | Validate and work with GEDCOM 7 semantics |
+| Specification | `g7lookups.js` | FamilySearch GEDCOM 7 registry |
 
-La couche orientée tags est suffisante pour lire et manipuler des fichiers GEDCOM sans validation stricte. La couche orientée types nécessite la spécification FamilySearch et applique les règles de cardinalité, de types de payload, et de gestion des extensions.
+The tag-oriented layer alone is sufficient to read and manipulate GEDCOM files without strict validation. The type-aware layer requires the FamilySearch specification and enforces cardinality rules, payload types, and extension handling.
 
-→ Voir [docs/architecture.md](docs/architecture.md) pour une explication détaillée.
+→ See [docs/architecture.md](docs/architecture.md) for a detailed explanation.
 
 ---
 
-## Démarrage rapide
+## Quick Start
 
-### Lire un fichier GEDCOM (couche tags)
+### Read a GEDCOM file (tag-oriented layer)
 
 ```js
 import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
 
 const gedc = GEDCStruct.fromString(gedcomText, g7ConfGEDC, console.error)
-// gedc est un tableau de GEDCStruct de niveau 0
+// gedc is an array of level-0 GEDCStruct nodes
 
-const version = gedc.querySelector('HEAD.GEDC.VERS')?.payload  // "7.0"
-const individus = [...gedc.querySelectorAll('.INDI')]           // tous les INDI
+const version    = gedc.querySelector('HEAD.GEDC.VERS')?.payload  // "7.0"
+const individuals = [...gedc.querySelectorAll('.INDI')]            // all INDI records
 ```
 
-### Lire et valider un fichier GEDCOM 7
+### Read and validate a GEDCOM 7 file
 
 ```js
 import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
 import { G7Lookups } from './g7lookups.js'
 import { G7Dataset } from './g7structure.js'
 
-// 1. Charger la spécification GEDCOM 7
+// 1. Load the GEDCOM 7 specification
 const spec = await fetch('https://raw.githubusercontent.com/FamilySearch/GEDCOM-registries/main/generated_files/g7validation.json')
   .then(r => r.json())
 const lookup = new G7Lookups(spec)
-lookup.err  = msg => console.error('Erreur :', msg)
-lookup.warn = msg => console.warn('Avertissement :', msg)
+lookup.err  = msg => console.error('Error:', msg)
+lookup.warn = msg => console.warn('Warning:', msg)
 
-// 2. Parser
+// 2. Parse
 const gedc    = GEDCStruct.fromString(gedcomText, g7ConfGEDC)
 const dataset = G7Dataset.fromGEDC(gedc, lookup)
 
-// 3. Valider
+// 3. Validate
 dataset.validate()
 ```
 
-### Créer un dataset programmatiquement
+### Build a dataset programmatically
 
 ```js
 const dataset = new G7Dataset(lookup)
 
-// Créer un individu
+// Create an individual
 const person = dataset.createRecord('https://gedcom.io/terms/v7/record-INDI')
 
-// Ajouter une naissance
+// Add a birth event
 person.createSubstructure('https://gedcom.io/terms/v7/BIRT', 'Y')
   .createSubstructure('https://gedcom.io/terms/v7/DATE', '1 JAN 1900')
 
-// Sérialiser en texte GEDCOM
+// Serialize to GEDCOM text
 const output = dataset.toString()
 ```
 
-### Trouver ou créer (find-or-create)
+### Find or create (idempotent writes)
 
 ```js
-// Trouver un individu par sa valeur REFN, ou le créer s'il n'existe pas
+// Find an individual by REFN value, or create it if not found
 const person = dataset.findOrCreate(
   'https://gedcom.io/terms/v7/record-INDI', -1,
   'https://gedcom.io/terms/v7/REFN', 'ID-42'
 )
 
-// Appeler plusieurs fois retourne toujours le même objet
+// Calling again with the same arguments returns the same object
 const same = dataset.findOrCreate(
   'https://gedcom.io/terms/v7/record-INDI', -1,
   'https://gedcom.io/terms/v7/REFN', 'ID-42'
@@ -113,76 +113,76 @@ const same = dataset.findOrCreate(
 
 ## Modules
 
-### `gedcstruct.js` — Couche orientée tags
+### `gedcstruct.js` — Tag-oriented layer
 
-Transforme un texte GEDCOM en arbre de nœuds `GEDCStruct`. Gère les pseudo-structures `CONT`/`CONC`, les pointeurs cross-référence, et les dialectes 5.x ou 7.x.
+Turns GEDCOM text into a tree of `GEDCStruct` nodes. Handles `CONT`/`CONC` pseudo-structures, cross-reference pointers, and 5.x or 7.x dialects.
 
-Exports : `GEDCStruct`, `g5ConfGEDC`, `g7ConfGEDC`
+Exports: `GEDCStruct`, `g5ConfGEDC`, `g7ConfGEDC`
 
-### `g7lookups.js` — Registre GEDCOM 7
+### `g7lookups.js` — GEDCOM 7 specification
 
-Encapsule le fichier [g7validation.json](https://github.com/FamilySearch/GEDCOM-registries) de FamilySearch. Fournit la résolution dynamique des types de tags, des types de payload, des ensembles d'énumérations, et des extensions.
+Wraps the [FamilySearch GEDCOM Registries](https://github.com/FamilySearch/GEDCOM-registries) JSON to provide tag definitions, payload types, enumeration sets, and extension handling.
 
-Exports : `G7Lookups`
+Exports: `G7Lookups`
 
-### `g7structure.js` — Couche orientée types
+### `g7structure.js` — Type-aware layer
 
-Convertit les nœuds `GEDCStruct` en `G7Structure` typées et validées selon la spécification GEDCOM 7. Gère les règles de cardinalité, les extensions, et la sérialisation SCHMA.
+Converts tag-oriented nodes into type-validated `G7Structure` objects. Understands GEDCOM 7 semantics, cardinality rules, payload types, and extension handling.
 
-Exports : `G7Structure`, `G7Dataset`
+Exports: `G7Structure`, `G7Dataset`
 
-### `g7datatypes.js` — Types de payloads
+### `g7datatypes.js` — Payload data types
 
-Implémente les types de valeurs GEDCOM 7 : `G7Date`, `G7DateValue`, `G7Age`, `G7Time`, `G7Enum`.
-
----
-
-## Documentation détaillée
-
-- [Architecture et flux de données](docs/architecture.md)
-- [Référence API](docs/api.md)
-- [Exemples pratiques](docs/examples.md)
+Implements typed payload values: `G7Date`, `G7DateValue`, `G7Age`, `G7Time`, `G7Enum`.
 
 ---
 
-## Encodage des caractères
+## Documentation
 
-La bibliothèque travaille sur des chaînes JavaScript. Elle ne gère pas la conversion d'encodage binaire (UTF-8, ANSEL, etc.) : le fichier doit être décodé en chaîne JavaScript avant d'être passé à la bibliothèque.
-
----
-
-## Licence
-
-Publiée sous [MIT](LICENSE-MIT) et [Unlicense](LICENSE-UNLICENSE). Les deux s'appliquent simultanément ; utilisez celle qui vous convient.
+- [Architecture and data flow](docs/architecture.md)
+- [API reference](docs/api.md)
+- [Practical examples](docs/examples.md)
 
 ---
 
-## Contribuer
+## Character Encoding
 
-Les rapports de bugs et les pull requests sont les bienvenus via [GitHub Issues](https://github.com/gedcom7code/js-gedcom/issues).
+This library operates on JavaScript strings. It does not handle byte-level encoding conversion (UTF-8, ANSEL, etc.) — you must decode the file into a JavaScript string before passing it to the library.
 
 ---
 
-## État du développement
+## License
+
+Released under both the [MIT License](LICENSE-MIT) and the [Unlicense](LICENSE-UNLICENSE). Both apply simultaneously; use whichever suits you.
+
+---
+
+## Contributing
+
+Bug reports and pull requests are welcome via [GitHub Issues](https://github.com/gedcom7code/js-gedcom/issues).
+
+---
+
+## Development Status
 
 <details>
-<summary>Voir la liste des fonctionnalités</summary>
+<summary>Feature checklist</summary>
 
-- [x] Couche orientée tags
-    - [x] Parser avec gestion CONT/CONC et dialectes multiples
-    - [x] Création manuelle de structures
-    - [x] Sérialiseur/désérialiseur JSON
-    - [x] `querySelector` et `querySelectorAll`
-- [x] Couche orientée types
-    - [x] Chargement de la spécification GEDCOM 7 (GEDCOM-registries)
-    - [x] Résolution contextuelle du type de structure
-    - [x] Validation du type de payload et des règles de cardinalité
-    - [x] Gestion des extensions (non documentées, non enregistrées, aliases, relocalisées)
-    - [x] Avertissements de dépréciation
-    - [x] Création manuelle avec vérification d'erreurs (`.validate()`)
-    - [ ] Vérification automatique partielle à la création
-    - [x] Sérialisation vers la couche tags avec déduction du schéma
-    - [x] Sérialiseur/désérialiseur JSON
-    - [x] `find` et `findOrCreate`
+- [x] Tag-oriented layer
+    - [x] Parser with CONT/CONC handling and multiple dialects
+    - [x] Manual structure creation
+    - [x] JSON serializer/deserializer
+    - [x] `querySelector` and `querySelectorAll`
+- [x] Type-aware layer
+    - [x] Load GEDCOM 7 specification from GEDCOM-registries
+    - [x] Context-aware structure type resolution
+    - [x] Payload type validation and cardinality rules
+    - [x] Extension handling (undocumented, unregistered, aliased, relocated)
+    - [x] Deprecation warnings
+    - [x] Manual structure creation with error checking (`.validate()`)
+    - [ ] Automatic partial checking on creation
+    - [x] Serialize to tag-oriented layer with schema deduction
+    - [x] JSON serializer/deserializer
+    - [x] `find` and `findOrCreate`
 
 </details>
