@@ -7,7 +7,7 @@
 For quickly scanning a GEDCOM file without type validation, `GEDCStruct` alone is sufficient.
 
 ```js
-import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
+import { GEDCStruct, g7ConfGEDC } from './src/gedcstruct.js'
 
 const gedc = GEDCStruct.fromString(gedcomText, g7ConfGEDC, console.error)
 
@@ -28,9 +28,9 @@ for (const indi of gedc.querySelectorAll('.INDI')) {
 To access typed payloads and benefit from validation:
 
 ```js
-import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
-import { G7Lookups } from './g7lookups.js'
-import { G7Dataset } from './g7structure.js'
+import { GEDCStruct, g7ConfGEDC } from './src/gedcstruct.js'
+import { G7Lookups } from './src/g7lookups.js'
+import { G7Dataset } from './src/g7structure.js'
 
 const spec   = await fetch('https://raw.githubusercontent.com/FamilySearch/GEDCOM-registries/main/generated_files/g7validation.json').then(r => r.json())
 const lookup = new G7Lookups(spec)
@@ -57,9 +57,9 @@ for (const person of dataset.records.get(INDI) ?? []) {
 ## 2. Validate a GEDCOM 7 file
 
 ```js
-import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
-import { G7Lookups } from './g7lookups.js'
-import { G7Dataset } from './g7structure.js'
+import { GEDCStruct, g7ConfGEDC } from './src/gedcstruct.js'
+import { G7Lookups } from './src/g7lookups.js'
+import { G7Dataset } from './src/g7structure.js'
 
 const errors   = []
 const warnings = []
@@ -83,8 +83,8 @@ warnings.forEach(w => console.warn('WARN: ', w))
 ## 3. Build a GEDCOM 7 dataset from scratch
 
 ```js
-import { G7Lookups } from './g7lookups.js'
-import { G7Dataset } from './g7structure.js'
+import { G7Lookups } from './src/g7lookups.js'
+import { G7Dataset } from './src/g7structure.js'
 
 const T = 'https://gedcom.io/terms/v7/'  // URI prefix shorthand
 
@@ -185,9 +185,9 @@ const output = dataset.toString()
 ## 7. Round-trip: read, modify, rewrite
 
 ```js
-import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
-import { G7Lookups } from './g7lookups.js'
-import { G7Dataset } from './g7structure.js'
+import { GEDCStruct, g7ConfGEDC } from './src/gedcstruct.js'
+import { G7Lookups } from './src/g7lookups.js'
+import { G7Dataset } from './src/g7structure.js'
 
 const spec    = await fetch('...g7validation.json').then(r => r.json())
 const lookup  = new G7Lookups(spec)
@@ -233,7 +233,7 @@ const text     = restored.toString()
 For GEDCOM 5.x files or non-standard dialects, use `gedcstruct.js` alone with `g5ConfGEDC`:
 
 ```js
-import { GEDCStruct, g5ConfGEDC } from './gedcstruct.js'
+import { GEDCStruct, g5ConfGEDC } from './src/gedcstruct.js'
 
 const gedc = GEDCStruct.fromString(gedcom5Text, g5ConfGEDC, console.error)
 

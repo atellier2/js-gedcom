@@ -437,7 +437,7 @@ class G7Dataset {
    * @patam {G7Lookup} lookup
    */
   static fromString(str, lookup) {
-    const src = GEDCStruct.fromString(src, g7ConfGEDC, lookup.err)
+    const src = GEDCStruct.fromString(str, g7ConfGEDC, lookup.err)
     return G7Dataset.fromGEDC(src, lookup)
   }
   /** Parse a list of GEDCStruct into a dataset
