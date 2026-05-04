@@ -1,247 +1,188 @@
-This repository has plain dependency-free JavaScript that can process GEDCOM in various ways and forms.
-It is designed to have various operating modes
-which are handled by separate module files to facilitate uses which do not need them all.
+# js-gedcom
 
-This repository does not currently handle different character sets.
-It assumes you have correctly parsed bytes into a JavaScript string before processing.
+A dependency-free JavaScript library for parsing, validating, and creating [GEDCOM](https://gedcom.io/) genealogy files. Supports both GEDCOM 5.x and [FamilySearch GEDCOM 7](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).
 
-To use this project as a FamilySearch GEDCOM 7 validator, visit <https://gedcom7code.github.io/js-gedcom/>.
+> **Online validator**: To validate a GEDCOM 7 file directly in your browser, visit <https://gedcom7code.github.io/js-gedcom/>.
 
-# Status
+---
+
+## What is GEDCOM?
+
+GEDCOM (Genealogical Data Communication) is the standard format for exchanging family tree data between genealogy applications. A GEDCOM file is a plain-text tree of structures. Each line contains a **level**, a **tag**, and an optional **payload**:
+
+```
+0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE 1 JAN 1900
+```
+
+Structures nest by level: a level-`2` line is a child of the last level-`1` line.
+
+---
+
+## Architecture
+
+The library is organized into **three layers**, each building on the previous:
+
+| Layer | Module | Role |
+|-------|--------|------|
+| Tag-oriented | `gedcstruct.js` | Parse/serialize raw GEDCOM syntax |
+| Type-aware | `g7structure.js` | Validate and work with GEDCOM 7 semantics |
+| Specification | `g7lookups.js` | FamilySearch GEDCOM 7 registry |
+
+The tag-oriented layer alone is sufficient to read and manipulate GEDCOM files without strict validation. The type-aware layer requires the FamilySearch specification and enforces cardinality rules, payload types, and extension handling.
+
+→ See [docs/architecture.md](docs/architecture.md) for a detailed explanation.
+
+---
+
+## Quick Start
+
+### Read a GEDCOM file (tag-oriented layer)
+
+```js
+import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
+
+const gedc = GEDCStruct.fromString(gedcomText, g7ConfGEDC, console.error)
+// gedc is an array of level-0 GEDCStruct nodes
+
+const version    = gedc.querySelector('HEAD.GEDC.VERS')?.payload  // "7.0"
+const individuals = [...gedc.querySelectorAll('.INDI')]            // all INDI records
+```
+
+### Read and validate a GEDCOM 7 file
+
+```js
+import { GEDCStruct, g7ConfGEDC } from './gedcstruct.js'
+import { G7Lookups } from './g7lookups.js'
+import { G7Dataset } from './g7structure.js'
+
+// 1. Load the GEDCOM 7 specification
+const spec = await fetch('https://raw.githubusercontent.com/FamilySearch/GEDCOM-registries/main/generated_files/g7validation.json')
+  .then(r => r.json())
+const lookup = new G7Lookups(spec)
+lookup.err  = msg => console.error('Error:', msg)
+lookup.warn = msg => console.warn('Warning:', msg)
+
+// 2. Parse
+const gedc    = GEDCStruct.fromString(gedcomText, g7ConfGEDC)
+const dataset = G7Dataset.fromGEDC(gedc, lookup)
+
+// 3. Validate
+dataset.validate()
+```
+
+### Build a dataset programmatically
+
+```js
+const dataset = new G7Dataset(lookup)
+
+// Create an individual
+const person = dataset.createRecord('https://gedcom.io/terms/v7/record-INDI')
+
+// Add a birth event
+person.createSubstructure('https://gedcom.io/terms/v7/BIRT', 'Y')
+  .createSubstructure('https://gedcom.io/terms/v7/DATE', '1 JAN 1900')
+
+// Serialize to GEDCOM text
+const output = dataset.toString()
+```
+
+### Find or create (idempotent writes)
+
+```js
+// Find an individual by REFN value, or create it if not found
+const person = dataset.findOrCreate(
+  'https://gedcom.io/terms/v7/record-INDI', -1,
+  'https://gedcom.io/terms/v7/REFN', 'ID-42'
+)
+
+// Calling again with the same arguments returns the same object
+const same = dataset.findOrCreate(
+  'https://gedcom.io/terms/v7/record-INDI', -1,
+  'https://gedcom.io/terms/v7/REFN', 'ID-42'
+)
+// person === same  →  true
+```
+
+---
+
+## Modules
+
+### `gedcstruct.js` — Tag-oriented layer
+
+Turns GEDCOM text into a tree of `GEDCStruct` nodes. Handles `CONT`/`CONC` pseudo-structures, cross-reference pointers, and 5.x or 7.x dialects.
+
+Exports: `GEDCStruct`, `g5ConfGEDC`, `g7ConfGEDC`
+
+### `g7lookups.js` — GEDCOM 7 specification
+
+Wraps the [FamilySearch GEDCOM Registries](https://github.com/FamilySearch/GEDCOM-registries) JSON to provide tag definitions, payload types, enumeration sets, and extension handling.
+
+Exports: `G7Lookups`
+
+### `g7structure.js` — Type-aware layer
+
+Converts tag-oriented nodes into type-validated `G7Structure` objects. Understands GEDCOM 7 semantics, cardinality rules, payload types, and extension handling.
+
+Exports: `G7Structure`, `G7Dataset`
+
+### `g7datatypes.js` — Payload data types
+
+Implements typed payload values: `G7Date`, `G7DateValue`, `G7Age`, `G7Time`, `G7Enum`.
+
+---
+
+## Documentation
+
+- [Architecture and data flow](docs/architecture.md)
+- [API reference](docs/api.md)
+- [Practical examples](docs/examples.md)
+
+---
+
+## Character Encoding
+
+This library operates on JavaScript strings. It does not handle byte-level encoding conversion (UTF-8, ANSEL, etc.) — you must decode the file into a JavaScript string before passing it to the library.
+
+---
+
+## License
+
+Released under both the [MIT License](LICENSE-MIT) and the [Unlicense](LICENSE-UNLICENSE). Both apply simultaneously; use whichever suits you.
+
+---
+
+## Contributing
+
+Bug reports and pull requests are welcome via [GitHub Issues](https://github.com/gedcom7code/js-gedcom/issues).
+
+---
+
+## Development Status
+
+<details>
+<summary>Feature checklist</summary>
 
 - [x] Tag-oriented layer
-    - [x] Tag-oriented parser
-        - [x] With CONT and CONC handling
-        - [x] With multiple dialects
-    - [x] Manual creation of structures
-    - [x] Tag-oriented JSON serializer/deserializer
-    - [x] `querySelector` and `querySelectorAll` accepting `"HEAD.GEDC"`-type tag paths
+    - [x] Parser with CONT/CONC handling and multiple dialects
+    - [x] Manual structure creation
+    - [x] JSON serializer/deserializer
+    - [x] `querySelector` and `querySelectorAll`
 - [x] Type-aware layer
-    - [x] Parse spec from <https://github.com/FamilySearch/GEDCOM-registries>
-    - [x] Parse tag-oriented into type-aware
-        - [x] Context-aware structure type
-            - [x] Error for out-of-place standard tags
-            - [x] Error for cardinality violations
-        - [x] Structure-type-aware payload parsing
-            - [x] Error for malformed payloads
-            - [x] Error for enumeration set membership violations
-            - [x] Error for pointed-to type violations
-        - [x] Support extensions, schema
-            - [x] Warn about undocumented, unregistered, aliased, and relocated
-        - [x] Warn about deprecations
-            - [x] EXID.TYPE
-            - [ ] g7:enumset-ord-STAT members COMPLETED, EXCLUDED, INFANT, PRE_1970, SUBMITTED, UNCLEARED
-        - [ ] Warn about not-recommended patterns
-    - [x] Manual creation of structures
-        - [x] Creation, pointer handling, etc
-        - [x] Error checking
-            - [x] on request via `.validate()`
-            - [ ] automatic partial checking on creation: payload types, superstructure not having too many of non-plural substructures
-    - [x] Serialize to tag-oriented
-        - [x] Schema deduction
-        - [x] Serialization
-    - [x] Type-oriented JSON serializer/deserializer
-        - [x] Datatype serialization/deserialization
-        - [x] Structure serialization/deserialization
-    - [x] `find` and `findOrCreate` accepting arbitrarily-nested structure types and payload values (e.g. for finding a record with a given `EXID` and `EXID-TYPE`).
+    - [x] Load GEDCOM 7 specification from GEDCOM-registries
+    - [x] Context-aware structure type resolution
+    - [x] Payload type validation and cardinality rules
+    - [x] Extension handling (undocumented, unregistered, aliased, relocated)
+    - [x] Deprecation warnings
+    - [x] Manual structure creation with error checking (`.validate()`)
+    - [ ] Automatic partial checking on creation
+    - [x] Serialize to tag-oriented layer with schema deduction
+    - [x] JSON serializer/deserializer
+    - [x] `find` and `findOrCreate`
 
-So far, the testing has been limited to starting with maximal70.ged augmented with various extensions and verifying the following properties, mostly by hand, also checking that all warnings and errors issued are correct:
-
-```js
-gedc = GEDCStruct.fromString(maximal, g7ConfGEDC)
-maximal2 = gedc.toString()
-// assert(maximal2 == maximal)
-
-json_gedc = gedc.map(e=>e.toJSON())
-gedc2 = GEDCStruct.fromJSON(json)
-maximal3 = gedc2.map(e => e.toString('\n',-1,false)).join('')
-// assert(maximal3 == maximal)
-
-ged7 = G7Dataset.fromGEDC(gedc, g7validation)
-gedc3 = ged7.toGEDC()
-maximal4 = gedc3.toString()
-// assert(maximal4 == maximal modulo some reordering and normalization)
-
-json_ged7 = ged7.toJSON()
-ged72 = G7Dataset.fromJSON(json, g7validation)
-gedc4 = ged72.toGEDC()
-maximal5 = gedc4.toString()
-// assert(maximal5 == maximal4)
-```
-
-I've also done just a little ad-hoc testing to verify that if I create a G7Dataset programmatically it it populates its schema and otherwise serializes as expected.
-
-# GEDC parser/serializer
-
-Parses a GEDCOM dataset string
-into a sequence of GEDC structures.
-Each structure contains
-
-- `tag`
-- optionally `payload`, which is one of
-    - a string
-    - a (pointer to) another GEDC structure
-    - `null` for an encoded pointer with no destination
-- optionally `sub`, which is a list of other structures
-
-For internal use, we also track the following:
-
-- `sup`, the (unique) structure that this structure is in the `sub` list of, or null for top-level structures
-- `references`, a (usually empty) list of other structures that this is the `payload` of
-- optionally `id`, a recommended xref_id to use in serializing pointers to this structure
-
-Both GEDCStruct
-and the list of GEDCStruct returned by `fromJSON` and `fromString`
-have two utility methods, `querySelect` and `querySelectAll`,
-modeled after the corresponding methods in DOM Elements
-but using GEDCOM dot-notation paths instead. In particular,
-
-- `XYZ` matches any structure with tag `XYZ`
-- `.XYZ` matches any top-level structure with tag `XYZ`
-- `ABC.XYZ` matches any structure with tag `XYZ` that is a substructure of a structure with tag `ABC`
-- `ABC..XYZ` matches any structure with tag `XYZ` that contained within a structure with tag `ABC`
-
-GEDC parsing takes care of converting xref_id to pointers
-and managing CONT and CONC pseudostructures;
-GEDC serializing handles these going the other way.
-
-GEDC parsing and serializing both accept a configuration object with the following keys.
-
-Parsing configurations:
-
-- `len` = `0`{.js}
-    
-    positive: limit lines to this many characters
-    
-    zero: no length limit
-    
-    negative: no length limit and no CONC allowed
-
-  - `tag` = `/.*/`{.js}
-
-    A regex to limit the set of permitted tags.
-    Tags will always match at least `/^[^@\p{Cc}\p{Z}][^\p{Cc}\p{Z}]*$/u`{.js}:
-    that is, 1 or more characters,
-    no whitespace or control characters,
-    and not beginning with `@`.
-
-- `xref` = `/.*/`{.js}
-    
-    A regex to limit the set of permitted cross-reference identifiers.
-    Cross-reference identifiers will always match at least `/^([^@#\p{Cc}]|\t)([^@\p{Cc}]|\t)*$/u`{.js}:
-    that is, one or more characters,
-    no non-tab control characters,
-    no `@`,
-    and not beginning with `#`.
-
-- `linesep` = `/.*/`{.js}
-    
-    A regex to limit what is considered a line separation.
-    Line separations will always match at least /^[\n\r]\p{WSpace}*$/u:
-    that is, a carriage return or line feed
-    followed by whitespace.
-
-- `delim` = `/.*/`{.js}
-    
-    A regex to limit what is considered a delimiter.
-    Delimiters will always match at least /^[ \t\p{Zs}]+$/u:
-    that is, linear whitespace.
-    
-    A single space will always be used during serialization, regardless of the value of `delim`.
-
-- `payload` = `/.*/`{.js}
-    
-    A regex to limit permitted string payloads.
-
-- `zeros` = `false`
-    
-    If `true`, allow leading zeros on levels (e.g. `00` or `01`)
-
-Serializing configurations:
-
-- `newline` = `'\n'`{.js}
-    
-    A string to insert between lines when serializing.
-    Should match `linesep`.
-
-- `escapes` = `false`
-    
-    If `true`, serialize payloads beginning `@#` as `@#` instead of `@@#`.
-    Both always deserialize as the same thing.
-
-Two special config objects are provided to match the GEDCOM 5.x and FamilySearch GEDCOM 7.x specs:
-
-```js
-/** GEDCOM 5.x-compatible configuration */
-const g5ConfGEDC = {
-  len: 255,
-  tag: /^[0-9a-z_A-Z]{1,31}$/u,
-  xref: /^[0-9a-z_A-Z][^\p{Cc}@]{0,19}$/u,
-  linesep: /^[\r\n][\r\n \t]*$/,
-  delim: /^ $/,
-  zeros: false,
-  escapes: true,
-}
-
-/** GEDCOM 7.x-compatible configuration */
-const g7ConfGEDC = {
-  len: -1,
-  tag: /^([A-Z]|_[0-9_A-Z])[0-9_A-Z]*$/u,
-  xref: /^([A-Z]|_[0-9_A-Z])[0-9_A-Z]*$/u,
-  linesep: /^(\r\n?|\n\r?)$/,
-  delim: /^ $/,
-  payload: /^.+$/,
-  zeros: false,
-  escapes: false,
-}
-```
-
-As of commit 34dd91ad90ce5e8301e943b4d559a603028b45c9 (2023-07-18), the implementation round-trips `maximal70.ged` from <https://gedcom.io/tools/>; that is maximal70.ged → fromString → toJSON → fromJSON → toString == maximal70.ged.
-Note that this does not constitute an exhaustive test
-and the code may contain bugs.
-
-# FamilySearch GEDCOM 7 Type Checker
-
-Uses a parsed schema like [g7validation.json](https://github.com/FamilySearch/GEDCOM-registries/blob/main/generated_files/g7validation.json)
-to convert a GEDC dataset into a FamilySearch GEDCOM 7 dataset.
-Various FamilySearch GEDCOM 7 rules are embedded within the code,
-including extension handling,
-payload datatypes,
-and structure ordering rules.
-
-A G7Structure contains
-
-- `type`, a URI or unregistered extension tag
-- optionally `payload`, which may have many different types depending on the `type`
-- `sub`, which is a map with `type` keys and list-of-G7Structure values
-
-The `type` is omitted during JSON serialization as it is available in the G7Structure's containing structure.
-
-For internal use, we also track the following:
-
-- `sup`, the (unique) structure that this structure is in the `sub` list of, or null for top-level structures
-- `references`, a (usually empty) list of other structures that this is the `payload` of
-- optionally `id`, a recommended xref_id to use in serializing pointers to this structure
-
-Because some operations are handled centrally (such as determining which extension tags are in use),
-a G7Dataset is used to enclose the G7Structures;
-it contains
-
-- `header`, a `G7Structure` with type <https://gedcom.io/terms/v7/HEAD>
-- `records`, which is exactly like G7Structure's `sub`
-
-# License
-
-This code is released under both the MIT and UNLICENSE.
-The dual licensing is motivated by the following observations:
-
-- I, Luther Tychonievich, would like to participate in a small bit of ideological activism by promoting the Unlicense's goal: to disclaim copyright monopoly interest.
-- I would also like as many people to use the code as possible. Since the Unlicense is not a proven or well known license, I also offer this code under the MIT license, which is ubiquitous and accepted by almost everyone.
-
-More specifically, this code and all its dependencies are compatible with this licensing choice. Any dependencies (direct and transitive) will always be limited to permissive licenses. This code will never depend on code that is not permissively licensed. This means rejecting any dependency that uses a copyleft license such as the GPL, LGPL, MPL or any of the Creative Commons ShareAlike licenses.
-
-
-# Contributing
-
-Reports of errors or gaps in the code are very welcome, preferably as [issues on github](https://github.com/gedcom7code/js-gedcom/issues).
-Pull requests extending functionality or fixing errors are also welcome.
+</details>
