@@ -3,7 +3,17 @@
   "version": "1.0.0",
   "description": "Dependency-free JavaScript library for parsing, validating, and creating GEDCOM genealogy files",
   "type": "module",
+  "main": "src/g7structure.js",
+  "exports": {
+    "./gedcstruct": "./src/gedcstruct.js",
+    "./g7datatypes": "./src/g7datatypes.js",
+    "./g7lookups": "./src/g7lookups.js",
+    "./g7structure": "./src/g7structure.js"
+  },
   "license": "MIT OR Unlicense",
+  "files": [
+    "src/"
+  ],
   "engines": {
     "node": ">=20.0.0"
   },
